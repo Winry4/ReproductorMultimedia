@@ -219,7 +219,7 @@ public class SpeechAPI {
                 }
             }
 
-            final InputStream stream = mContext.getResources().openRawResource(R.raw.credential);
+            final InputStream stream = mContext.getResources().openRawResource(R.raw.credenciales);
             try {
                 final GoogleCredentials credentials = GoogleCredentials.fromStream(stream).createScoped(SCOPE);
                 final AccessToken token = credentials.refreshAccessToken();

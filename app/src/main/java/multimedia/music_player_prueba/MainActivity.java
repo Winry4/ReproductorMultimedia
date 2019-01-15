@@ -1,18 +1,27 @@
 package multimedia.music_player_prueba;
 
+import android.Manifest;
+import android.app.Dialog;
 import android.content.Intent;
+import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Matrix;
 import android.media.MediaPlayer;
 import android.os.AsyncTask;
 import android.os.Handler;
+import android.support.v4.app.ActivityCompat;
+import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
+import android.text.TextUtils;
 import android.view.View;
+import android.view.Window;
+import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.ImageButton;
 import android.widget.ImageView;
+import android.widget.ListView;
 import android.widget.ProgressBar;
 import android.widget.TextView;
 
@@ -20,17 +29,78 @@ import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
 
+import butterknife.BindView;
+
 
 public class MainActivity extends AppCompatActivity  {
     private Handler handler = new Handler();
-
+    private static final int RECORD_REQUEST_CODE = 101;
     private List<Cancion> listCanciones = new ArrayList<>();
     MediaPlayer mediaPlayer1;
     MediaPlayer mediaPlayer2;
     MediaPlayer mediaPlayer3;
     MediaPlayer mediaPlayer4;
+    private List<String> stringList;
+    private SpeechAPI speechAPI;
+    private VoiceRecorder mVoiceRecorder;
+    Dialog customDialog = null;
+    TextView textMessage;
+    @BindView(R.id.contenido)
+    ListView listView;
+
     int progreso =-1;
     int posicion;
+    private ArrayAdapter adapter;
+    final SpeechAPI.Listener mSpeechServiceListener =
+            new SpeechAPI.Listener() {
+                @Override
+                public void onSpeechRecognized(final String text, final boolean isFinal) {
+                    if (isFinal) {
+                        mVoiceRecorder.dismiss();
+                    }
+                    if (textMessage != null && !TextUtils.isEmpty(text)) {
+                        runOnUiThread(new Runnable() {
+                            @Override
+                            public void run() {
+                                if (isFinal) {
+                                    textMessage.setText(null);
+                                    stringList.add(0,text);
+                                    adapter.notifyDataSetChanged();
+                                } else {
+                                    textMessage.setText(text);
+                                }
+                            }
+                        });
+                    }
+                }
+            };
+
+
+
+    final VoiceRecorder.Callback mVoiceCallback = new VoiceRecorder.Callback() {
+
+        @Override
+        public void onVoiceStart() {
+            if (speechAPI != null) {
+                speechAPI.startRecognizing(mVoiceRecorder.getSampleRate());
+            }
+        }
+
+        @Override
+        public void onVoice(byte[] data, int size) {
+            if (speechAPI != null) {
+                speechAPI.recognize(data, size);
+            }
+        }
+
+        @Override
+        public void onVoiceEnd() {
+            if (speechAPI != null) {
+                speechAPI.finishRecognizing();
+            }
+        }
+
+    };
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -257,7 +327,13 @@ public class MainActivity extends AppCompatActivity  {
             }
         });
 
-
+        ImageView lyrics=(ImageView) findViewById(R.id.lyrics);
+        lyrics.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                mostrar(v, ca.getNombre(), "");
+            }
+        });
 
     }
     public Bitmap redimensionarImagenMaximo(Bitmap mBitmap, float newWidth, float newHeigth) {
@@ -273,5 +349,95 @@ public class MainActivity extends AppCompatActivity  {
         // recreate the new Bitmap
         return Bitmap.createBitmap(mBitmap, 0, 0, width, height, matrix, false);
     }
+    private int isGrantedPermission(String permission) {
+        return ContextCompat.checkSelfPermission(this, permission);
+    }
+    private void makeRequest(String permission) {
+        ActivityCompat.requestPermissions(this, new String[]{permission}, RECORD_REQUEST_CODE);
+    }
 
+    private void startVoiceRecorder() {
+        if (mVoiceRecorder != null) {
+            mVoiceRecorder.stop();
+        }
+        mVoiceRecorder = new VoiceRecorder(mVoiceCallback);
+        mVoiceRecorder.start();
+    }
+
+    private void stopVoiceRecorder() {
+        if (mVoiceRecorder != null) {
+            mVoiceRecorder.stop();
+            mVoiceRecorder = null;
+        }
+    }
+    @Override
+    public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
+        if (requestCode == RECORD_REQUEST_CODE) {
+            if (grantResults.length == 0 && grantResults[0] == PackageManager.PERMISSION_DENIED
+                    && grantResults[0] == PackageManager.PERMISSION_DENIED) {
+                finish();
+            } else {
+                startVoiceRecorder();
+            }
+        }
+    }
+
+    public void mostrar(View view, String text, String msn)
+    {
+        // con este tema personalizado evitamos los bordes por defecto
+        customDialog = new Dialog(this,R.style.Theme_Dialog_Translucent);
+        //deshabilitamos el título por defecto
+        customDialog.requestWindowFeature(Window.FEATURE_NO_TITLE);
+        //obligamos al usuario a pulsar los botones para cerrarlo
+        customDialog.setCancelable(false);
+        //establecemos el contenido de nuestro dialog
+        customDialog.setContentView(R.layout.lyrics);
+
+
+        TextView titulo = (TextView) customDialog.findViewById(R.id.titulo);
+        titulo.setText(text);
+
+
+        //contenido.setText(msn);
+
+
+
+
+        try {
+            speechAPI = new SpeechAPI(MainActivity.this);
+        stringList = new ArrayList<>();
+        adapter =  new ArrayAdapter(this, android.R.layout.simple_list_item_1, stringList);
+       listView.setAdapter(adapter);
+
+
+        if (isGrantedPermission(Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED) {
+            startVoiceRecorder();
+        } else {
+            makeRequest(Manifest.permission.RECORD_AUDIO);
+        }
+        speechAPI.addListener(mSpeechServiceListener);
+        }catch (Exception e){
+            System.out.println("errooor:"+e.getMessage());
+
+        }
+
+
+        ((Button) customDialog.findViewById(R.id.button9)).setOnClickListener(new View.OnClickListener() {
+
+            @Override
+            public void onClick(View view)
+            {
+                customDialog.dismiss();
+                speechAPI.removeListener(mSpeechServiceListener);
+                speechAPI.destroy();
+                speechAPI = null;
+
+            }
+        });
+
+
+
+
+        customDialog.show();
+    }
 }
