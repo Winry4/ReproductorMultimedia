@@ -12,10 +12,11 @@ import java.sql.SQLOutput;
 public class CancionesSQLiteHelper extends SQLiteOpenHelper {
 
     String sqlCrearTabla = "CREATE TABLE Canciones (nombre TEXT, artista TEXT, album TEXT, duracion DOUBLE, id INTEGER)";
-    String prueba = "INSERT INTO Canciones (nombre, artista, album, duracion, id) VALUES ('Pausa', 'Izal',  'Autoterapia', 3.19, 1) ";
-    String prueba1 = "INSERT INTO Canciones (nombre, artista, album, duracion, id) VALUES ('Copacabana', 'Izal',  'Autoterapia', 3.33, 2) ";
+    String prueba = "INSERT INTO Canciones (nombre, artista, album, duracion, id) VALUES ('Miedo', 'Amaia',  'OT', 3.31, 1) ";
+    String prueba1 = "INSERT INTO Canciones (nombre, artista, album, duracion, id) VALUES ('Soñar contigo', 'Amaia',  'OT', 2.41, 2) ";
     String prueba2 = "INSERT INTO Canciones (nombre, artista, album, duracion, id) VALUES ('Girasoles', 'Rozalen',  'Cuando el Rio Suena', 3.45, 3) ";
     String prueba3 = "INSERT INTO Canciones (nombre, artista, album, duracion, id) VALUES ('La Puerta Violeta', 'Rozalen',  'Cuando el Rio Suena', 3.71, 4) ";
+    String prueba4 = "INSERT INTO Canciones (nombre, artista, album, duracion, id) VALUES ('La Belleza', 'Rozalen',  'Cuando el Rio Suena', 3.41, 5) ";
 
     public CancionesSQLiteHelper(Context contexto, String nombreBD, SQLiteDatabase.CursorFactory factory, int versionDB) {
         super(contexto, nombreBD, factory, versionDB);
@@ -30,6 +31,7 @@ public class CancionesSQLiteHelper extends SQLiteOpenHelper {
             db.execSQL(prueba1);
             db.execSQL(prueba2);
             db.execSQL(prueba3);
+            db.execSQL(prueba4);
         } catch (SQLException e) {
             System.out.println(e.getMessage());
             e.printStackTrace();

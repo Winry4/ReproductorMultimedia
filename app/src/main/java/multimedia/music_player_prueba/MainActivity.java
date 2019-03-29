@@ -1,7 +1,9 @@
 package multimedia.music_player_prueba;
 
 import android.Manifest;
+import android.annotation.SuppressLint;
 import android.app.Dialog;
+import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
@@ -10,11 +12,13 @@ import android.graphics.Matrix;
 import android.media.MediaPlayer;
 import android.os.AsyncTask;
 import android.os.Handler;
+import android.os.Message;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.text.TextUtils;
+import android.view.LayoutInflater;
 import android.view.View;
 import android.view.Window;
 import android.widget.ArrayAdapter;
@@ -23,33 +27,97 @@ import android.widget.ImageButton;
 import android.widget.ImageView;
 import android.widget.ListView;
 import android.widget.ProgressBar;
+import android.widget.SeekBar;
 import android.widget.TextView;
 
+import java.io.IOException;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
 
 import butterknife.BindView;
+import butterknife.ButterKnife;
 
 
 public class MainActivity extends AppCompatActivity  {
-    private Handler handler = new Handler();
+    @SuppressLint("HandlerLeak")
+    private Handler handler = new Handler() {
+        @Override
+        public void handleMessage(Message msg) {
+            int currentPosition = msg.what;
+            progressBar.setProgress(currentPosition);
+
+            String elapsedTime = createTimeLabel(currentPosition);
+            start = findViewById(R.id.start);
+            start.setText(elapsedTime);
+
+        }
+
+    };
+
+    public String createTimeLabel ( int time) {
+        String timelabel = "";
+        int min = time /1000/60;
+        int sec = time /1000%60;
+
+        timelabel = min + ":";
+        if (sec < 10) {
+            timelabel += 0;
+        }
+        timelabel += sec;
+
+        return timelabel;
+    }
     private static final int RECORD_REQUEST_CODE = 101;
     private List<Cancion> listCanciones = new ArrayList<>();
     MediaPlayer mediaPlayer1;
     MediaPlayer mediaPlayer2;
     MediaPlayer mediaPlayer3;
     MediaPlayer mediaPlayer4;
+    MediaPlayer mediaPlayer5;
+
+    Dialog customDialog = null;
+
+    TextView textMessage;
+    ListView listView;
+
+
+    private SeekBar progressBar;
+    private TextView start;
+
     private List<String> stringList;
     private SpeechAPI speechAPI;
     private VoiceRecorder mVoiceRecorder;
-    Dialog customDialog = null;
-    TextView textMessage;
-    @BindView(R.id.contenido)
-    ListView listView;
-
     int progreso =-1;
     int posicion;
+
+
+    final VoiceRecorder.Callback mVoiceCallback = new VoiceRecorder.Callback() {
+
+        @Override
+        public void onVoiceStart() {
+            if (speechAPI != null) {
+                speechAPI.startRecognizing(mVoiceRecorder.getSampleRate());
+            }
+        }
+
+        @Override
+        public void onVoice(byte[] data, int size) {
+            if (speechAPI != null) {
+                speechAPI.recognize(data, size);
+            }
+        }
+
+        @Override
+        public void onVoiceEnd() {
+            if (speechAPI != null) {
+                speechAPI.finishRecognizing();
+            }
+        }
+
+    };
+
+
     private ArrayAdapter adapter;
     final SpeechAPI.Listener mSpeechServiceListener =
             new SpeechAPI.Listener() {
@@ -77,45 +145,42 @@ public class MainActivity extends AppCompatActivity  {
 
 
 
-    final VoiceRecorder.Callback mVoiceCallback = new VoiceRecorder.Callback() {
 
-        @Override
-        public void onVoiceStart() {
-            if (speechAPI != null) {
-                speechAPI.startRecognizing(mVoiceRecorder.getSampleRate());
-            }
-        }
-
-        @Override
-        public void onVoice(byte[] data, int size) {
-            if (speechAPI != null) {
-                speechAPI.recognize(data, size);
-            }
-        }
-
-        @Override
-        public void onVoiceEnd() {
-            if (speechAPI != null) {
-                speechAPI.finishRecognizing();
-            }
-        }
-
-    };
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
         setContentView(R.layout.activity_main);
+        textMessage= (TextView)findViewById(R.id.letra);
+        listView = (ListView)findViewById(R.id.listview);
+
+
+        //ButterKnife.bind(this);
+        speechAPI = new SpeechAPI(MainActivity.this);
+        stringList = new ArrayList<>();
+        adapter = new ArrayAdapter(this,
+                android.R.layout.simple_list_item_1, stringList);
+
+
+
+        listView.setAdapter(adapter);
+
+
         ImageView canciones=(ImageView)findViewById(R.id.canciones);
         canciones.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
+                mediaPlayer1.stop();
+                mediaPlayer2.stop();
+                mediaPlayer3.stop();
+                mediaPlayer4.stop();
+                mediaPlayer5.stop();
                 Intent intent = new Intent(getBaseContext(), lista.class);
                 startActivity(intent);
             }
         });
 
-        final int position= getIntent().getIntExtra("position", 0);
+        final int position= getIntent().getIntExtra("posicion", 0);
         posicion= position;
         listCanciones = lista.listacaciones;
         final Cancion ca = listCanciones.get(posicion);
@@ -131,10 +196,37 @@ public class MainActivity extends AppCompatActivity  {
         end.setText(fin);
         start.setText("0:00");
 
-        mediaPlayer1 = MediaPlayer.create(getBaseContext(), R.raw.pausa);
-        mediaPlayer2 = MediaPlayer.create(getBaseContext(), R.raw.pausa);
-        mediaPlayer3 = MediaPlayer.create(getBaseContext(), R.raw.lapuertavioleta);
+        mediaPlayer1 = MediaPlayer.create(getBaseContext(), R.raw.miedo);
+        mediaPlayer2 = MediaPlayer.create(getBaseContext(), R.raw.sonar);
+        mediaPlayer3 = MediaPlayer.create(getBaseContext(), R.raw.girasoles);
         mediaPlayer4 = MediaPlayer.create(getBaseContext(), R.raw.lapuertavioleta);
+        mediaPlayer5 = MediaPlayer.create(getBaseContext(), R.raw.belleza);
+        System.out.print(posicion);
+        switch (posicion){
+            case 0:
+                new Thread(new Runnable() {
+                    public void run() {
+                        mediaPlayer1.start();
+                    }
+                }).start();
+
+                break;
+            case 1:
+
+                mediaPlayer2.start();
+                break;
+            case 2:
+
+                mediaPlayer3.start();
+                break;
+            case 3:
+
+                mediaPlayer4.start();
+                break;
+            case 4:
+                mediaPlayer5.start();
+                break;
+        }
 
 
         Bitmap foto=redimensionarImagenMaximo(ca.getFoto(), 800, 600);
@@ -142,6 +234,8 @@ public class MainActivity extends AppCompatActivity  {
 
         final ImageButton play=(ImageButton)findViewById(R.id.play_button);
         final ImageButton pausa= (ImageButton)findViewById(R.id.pausa);
+        play.setVisibility(View.INVISIBLE);
+        pausa.setVisibility(View.VISIBLE);
         pausa.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -151,79 +245,298 @@ public class MainActivity extends AppCompatActivity  {
                     mediaPlayer1.pause();
                 }
                 if(mediaPlayer2.isPlaying()){
-                    mediaPlayer1.pause();
-                }
-                if(mediaPlayer2.isPlaying()){
                     mediaPlayer2.pause();
                 }
-                if(mediaPlayer2.isPlaying()){
-                    mediaPlayer2.pause();
+                if(mediaPlayer3.isPlaying()){
+                    mediaPlayer3.pause();
+                }
+                if(mediaPlayer4.isPlaying()){
+                    mediaPlayer4.pause();
+                }
+                if(mediaPlayer5.isPlaying()){
+                    mediaPlayer5.pause();
                 }
             }
         });
-        final ProgressBar progressBar = findViewById(R.id.song_progress);
+
+        progressBar = (SeekBar) findViewById(R.id.song_progress);
         play.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
                 pausa.setVisibility(v.VISIBLE);
                 play.setVisibility(v.INVISIBLE);
-                if(mediaPlayer1.isPlaying()){
-                    mediaPlayer1.stop();
+                if(posicion == 0){
+                    mediaPlayer1.start();
                 }
-                if(mediaPlayer2.isPlaying()){
-                    mediaPlayer1.stop();
+                if(posicion == 1){
+                    mediaPlayer2.start();
                 }
-                if(mediaPlayer2.isPlaying()){
-                    mediaPlayer2.stop();
+                if(posicion == 2){
+                    mediaPlayer3.start();
                 }
-                if(mediaPlayer2.isPlaying()){
-                    mediaPlayer2.stop();
+                if(posicion == 3) {
+                    mediaPlayer4.start();
                 }
-                switch (posicion){
-                    case 0:
-                        mediaPlayer1.start();
-                        break;
-                    case 1:
+                if(posicion == 4) {
+                    mediaPlayer5.start();
+                }
+                /*int maxi= (int) (ca.getDuracion()+60);
+                progressBar.setMax(maxi);*/
 
-                        mediaPlayer2.start();
-                        break;
-                    case 2:
-
-                        mediaPlayer3.start();
-                        break;
-                    case 3:
-
-                        mediaPlayer4.start();
-                        break;
+                if(mediaPlayer1.isPlaying()) {
+                    progressBar.setMax(mediaPlayer1.getDuration());
                 }
-                int maxi= (int) (ca.getDuracion()+60);
-                progressBar.setMax(maxi);
+                if(mediaPlayer2.isPlaying()) {
+                    progressBar.setMax(mediaPlayer2.getDuration());
+                }
+                if(mediaPlayer3.isPlaying()) {
+                    progressBar.setMax(mediaPlayer3.getDuration());
+                }
+                if(mediaPlayer4.isPlaying()) {
+                    progressBar.setMax(mediaPlayer4.getDuration());
+                }
+                if(mediaPlayer5.isPlaying()) {
+                    progressBar.setMax(mediaPlayer5.getDuration());
+                }
+
+                progressBar.setOnSeekBarChangeListener(
+                        new SeekBar.OnSeekBarChangeListener() {
+                            @Override
+                            public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
+                                if(mediaPlayer1.isPlaying()) {
+                                    if (fromUser) {
+                                        mediaPlayer1.seekTo(progress);
+                                        progressBar.setProgress(progress);
+                                    }
+                                }
+                                if(mediaPlayer2.isPlaying()) {
+                                    if (fromUser) {
+                                        mediaPlayer2.seekTo(progress);
+                                        progressBar.setProgress(progress);
+                                    }
+                                }
+                                if(mediaPlayer3.isPlaying()) {
+                                    if (fromUser) {
+                                        mediaPlayer3.seekTo(progress);
+                                        progressBar.setProgress(progress);
+                                    }
+                                }
+                                if(mediaPlayer4.isPlaying()) {
+                                    if (fromUser) {
+                                        mediaPlayer4.seekTo(progress);
+                                        progressBar.setProgress(progress);
+                                    }
+                                }
+                                if(mediaPlayer5.isPlaying()) {
+                                    if (fromUser) {
+                                        mediaPlayer5.seekTo(progress);
+                                        progressBar.setProgress(progress);
+                                    }
+                                }
+                            }
+
+                            @Override
+                            public void onStartTrackingTouch(SeekBar seekBar) {
+
+                            }
+
+                            @Override
+                            public void onStopTrackingTouch(SeekBar seekBar) {
+
+                            }
+                        }
+                );
 
                 new Thread(new Runnable() {
+                    @Override
                     public void run() {
-                        while (progreso <= (ca.getDuracion()*60)) {
-                            progreso += 1;
-                            System.out.println(progreso);
-                            //Update progress bar with completion of operation
-                            handler.post(new Runnable() {
-                                public void run() {
-                                    progressBar.setProgress(progreso);
+                        if (mediaPlayer1.isPlaying()) {
+                            while (mediaPlayer1.isPlaying()) {
+                                try {
+                                    Message msg = new Message();
+                                    msg.what = mediaPlayer1.getCurrentPosition();
+                                    handler.sendMessage(msg);
+                                    Thread.sleep(1000);
+                                } catch (InterruptedException e) {}
+                            }
+                        }
 
-                                }
-                            });
-                            try {
-                                // Sleep for 200 milliseconds.
-                                //Just to display the progress slowly
-                                Thread.sleep(2000);
-                            } catch (InterruptedException e) {
-                                e.printStackTrace();
+                        if (mediaPlayer2.isPlaying()) {
+                            while (mediaPlayer2.isPlaying()) {
+                                try {
+                                    Message msg = new Message();
+                                    msg.what = mediaPlayer2.getCurrentPosition();
+                                    handler.sendMessage(msg);
+                                    Thread.sleep(1000);
+                                } catch (InterruptedException e) {}
+                            }
+                        }
+
+                        if (mediaPlayer3.isPlaying()) {
+                            while (mediaPlayer3.isPlaying()) {
+                                try {
+                                    Message msg = new Message();
+                                    msg.what = mediaPlayer3.getCurrentPosition();
+                                    handler.sendMessage(msg);
+                                    Thread.sleep(1000);
+                                } catch (InterruptedException e) {}
+                            }
+                        }
+
+                        if (mediaPlayer4.isPlaying()) {
+                            while (mediaPlayer4.isPlaying()) {
+                                try {
+                                    Message msg = new Message();
+                                    msg.what = mediaPlayer4.getCurrentPosition();
+                                    handler.sendMessage(msg);
+                                    Thread.sleep(1000);
+                                } catch (InterruptedException e) {}
+                            }
+                        }
+                        if (mediaPlayer5.isPlaying()) {
+                            while (mediaPlayer5.isPlaying()) {
+                                try {
+                                    Message msg = new Message();
+                                    msg.what = mediaPlayer5.getCurrentPosition();
+                                    handler.sendMessage(msg);
+                                    Thread.sleep(1000);
+                                } catch (InterruptedException e) {}
                             }
                         }
                     }
                 }).start();
 
+                /*new Thread(new Runnable() {
+                    public void run() {
+
+                    }
+                }).start();*/
+
             }
         });
+
+        if(mediaPlayer1.isPlaying()) {
+            progressBar.setMax(mediaPlayer1.getDuration());
+        }
+        if(mediaPlayer2.isPlaying()) {
+            progressBar.setMax(mediaPlayer2.getDuration());
+        }
+        if(mediaPlayer3.isPlaying()) {
+            progressBar.setMax(mediaPlayer3.getDuration());
+        }
+        if(mediaPlayer4.isPlaying()) {
+            progressBar.setMax(mediaPlayer4.getDuration());
+        }
+        if(mediaPlayer5.isPlaying()) {
+            progressBar.setMax(mediaPlayer5.getDuration());
+        }
+
+        progressBar.setOnSeekBarChangeListener(
+                new SeekBar.OnSeekBarChangeListener() {
+                    @Override
+                    public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
+                        if(mediaPlayer1.isPlaying()) {
+                            if (fromUser) {
+                                mediaPlayer1.seekTo(progress);
+                                progressBar.setProgress(progress);
+                            }
+                        }
+                        if(mediaPlayer2.isPlaying()) {
+                            if (fromUser) {
+                                mediaPlayer2.seekTo(progress);
+                                progressBar.setProgress(progress);
+                            }
+                        }
+                        if(mediaPlayer3.isPlaying()) {
+                            if (fromUser) {
+                                mediaPlayer3.seekTo(progress);
+                                progressBar.setProgress(progress);
+                            }
+                        }
+                        if(mediaPlayer4.isPlaying()) {
+                            if (fromUser) {
+                                mediaPlayer4.seekTo(progress);
+                                progressBar.setProgress(progress);
+                            }
+                        }
+                        if(mediaPlayer5.isPlaying()) {
+                            if (fromUser) {
+                                mediaPlayer5.seekTo(progress);
+                                progressBar.setProgress(progress);
+                            }
+                        }
+                    }
+
+                    @Override
+                    public void onStartTrackingTouch(SeekBar seekBar) {
+
+                    }
+
+                    @Override
+                    public void onStopTrackingTouch(SeekBar seekBar) {
+
+                    }
+                }
+        );
+
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                if (mediaPlayer1.isPlaying()) {
+                    while (mediaPlayer1.isPlaying()) {
+                        try {
+                            Message msg = new Message();
+                            msg.what = mediaPlayer1.getCurrentPosition();
+                            handler.sendMessage(msg);
+                            Thread.sleep(1000);
+                        } catch (InterruptedException e) {}
+                    }
+                }
+
+                if (mediaPlayer2.isPlaying()) {
+                    while (mediaPlayer2.isPlaying()) {
+                        try {
+                            Message msg = new Message();
+                            msg.what = mediaPlayer2.getCurrentPosition();
+                            handler.sendMessage(msg);
+                            Thread.sleep(1000);
+                        } catch (InterruptedException e) {}
+                    }
+                }
+
+                if (mediaPlayer3.isPlaying()) {
+                    while (mediaPlayer3.isPlaying()) {
+                        try {
+                            Message msg = new Message();
+                            msg.what = mediaPlayer3.getCurrentPosition();
+                            handler.sendMessage(msg);
+                            Thread.sleep(1000);
+                        } catch (InterruptedException e) {}
+                    }
+                }
+
+                if (mediaPlayer4.isPlaying()) {
+                    while (mediaPlayer4.isPlaying()) {
+                        try {
+                            Message msg = new Message();
+                            msg.what = mediaPlayer4.getCurrentPosition();
+                            handler.sendMessage(msg);
+                            Thread.sleep(1000);
+                        } catch (InterruptedException e) {}
+                    }
+                }
+                if (mediaPlayer5.isPlaying()) {
+                    while (mediaPlayer5.isPlaying()) {
+                        try {
+                            Message msg = new Message();
+                            msg.what = mediaPlayer5.getCurrentPosition();
+                            handler.sendMessage(msg);
+                            Thread.sleep(1000);
+                        } catch (InterruptedException e) {}
+                    }
+                }
+            }
+        }).start();
 
         ImageButton next=(ImageButton)findViewById(R.id.next_button);
         next.setOnClickListener(new View.OnClickListener() {
@@ -232,26 +545,44 @@ public class MainActivity extends AppCompatActivity  {
                 System.out.println("posiconcita "+posicion);
                 pausa.setVisibility(v.VISIBLE);
                 play.setVisibility(v.INVISIBLE);
-                if(mediaPlayer1.isPlaying()){
-                    mediaPlayer1.stop();
+                progressBar.setProgress(0);
+                mediaPlayer1.stop();
+                try {
+                    mediaPlayer1.prepare();
+                } catch (IOException e) {
+                    e.printStackTrace();
                 }
-                if(mediaPlayer2.isPlaying()){
-                    mediaPlayer2.stop();
+                mediaPlayer2.stop();
+                try {
+                    mediaPlayer2.prepare();
+                } catch (IOException e) {
+                    e.printStackTrace();
                 }
-                if(mediaPlayer3.isPlaying()){
-                    mediaPlayer3.stop();
+                mediaPlayer3.stop();
+                try {
+                    mediaPlayer3.prepare();
+                } catch (IOException e) {
+                    e.printStackTrace();
                 }
-                if(mediaPlayer4.isPlaying()){
-                    mediaPlayer4.stop();
+                mediaPlayer4.stop();
+                try {
+                    mediaPlayer4.prepare();
+                } catch (IOException e) {
+                    e.printStackTrace();
                 }
+                mediaPlayer5.stop();
+                try {
+                    mediaPlayer5.prepare();
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+
                 Cancion can;
-                if(posicion==3){
+                if(posicion==4){
                     posicion=0;
                     mediaPlayer1.start();
                     can=listCanciones.get(0);
-                    System.out.println("aqui andamios");
                 }else{
-                    System.out.println("pasando el rato");
                     switch (posicion){
                         case 0:
                             mediaPlayer2.start();
@@ -261,6 +592,9 @@ public class MainActivity extends AppCompatActivity  {
                             break;
                         case 2:
                             mediaPlayer4.start();
+                            break;
+                        case 3:
+                            mediaPlayer5.start();
                             break;
                     }
                     posicion+=1;
@@ -273,6 +607,129 @@ public class MainActivity extends AppCompatActivity  {
                 String fin= String.valueOf(can.getDuracion()).replace(".",":");
                 end.setText(fin);
 
+                if(mediaPlayer1.isPlaying()) {
+                    progressBar.setMax(mediaPlayer1.getDuration());
+                }
+                if(mediaPlayer2.isPlaying()) {
+                    progressBar.setMax(mediaPlayer2.getDuration());
+                }
+                if(mediaPlayer3.isPlaying()) {
+                    progressBar.setMax(mediaPlayer3.getDuration());
+                }
+                if(mediaPlayer4.isPlaying()) {
+                    progressBar.setMax(mediaPlayer4.getDuration());
+                }
+                if(mediaPlayer5.isPlaying()) {
+                    progressBar.setMax(mediaPlayer5.getDuration());
+                }
+
+                progressBar.setOnSeekBarChangeListener(
+                        new SeekBar.OnSeekBarChangeListener() {
+                            @Override
+                            public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
+                                if(mediaPlayer1.isPlaying()) {
+                                    if (fromUser) {
+                                        mediaPlayer1.seekTo(progress);
+                                        progressBar.setProgress(progress);
+                                    }
+                                }
+                                if(mediaPlayer2.isPlaying()) {
+                                    if (fromUser) {
+                                        mediaPlayer2.seekTo(progress);
+                                        progressBar.setProgress(progress);
+                                    }
+                                }
+                                if(mediaPlayer3.isPlaying()) {
+                                    if (fromUser) {
+                                        mediaPlayer3.seekTo(progress);
+                                        progressBar.setProgress(progress);
+                                    }
+                                }
+                                if(mediaPlayer4.isPlaying()) {
+                                    if (fromUser) {
+                                        mediaPlayer4.seekTo(progress);
+                                        progressBar.setProgress(progress);
+                                    }
+                                }
+                                if(mediaPlayer5.isPlaying()) {
+                                    if (fromUser) {
+                                        mediaPlayer5.seekTo(progress);
+                                        progressBar.setProgress(progress);
+                                    }
+                                }
+                            }
+
+                            @Override
+                            public void onStartTrackingTouch(SeekBar seekBar) {
+
+                            }
+
+                            @Override
+                            public void onStopTrackingTouch(SeekBar seekBar) {
+
+                            }
+                        }
+                );
+
+                new Thread(new Runnable() {
+                    @Override
+                    public void run() {
+                        if (mediaPlayer1.isPlaying()) {
+                            while (mediaPlayer1.isPlaying()) {
+                                try {
+                                    Message msg = new Message();
+                                    msg.what = mediaPlayer1.getCurrentPosition();
+                                    handler.sendMessage(msg);
+                                    Thread.sleep(1000);
+                                } catch (InterruptedException e) {}
+                            }
+                        }
+
+                        if (mediaPlayer2.isPlaying()) {
+                            while (mediaPlayer2.isPlaying()) {
+                                try {
+                                    Message msg = new Message();
+                                    msg.what = mediaPlayer2.getCurrentPosition();
+                                    handler.sendMessage(msg);
+                                    Thread.sleep(1000);
+                                } catch (InterruptedException e) {}
+                            }
+                        }
+
+                        if (mediaPlayer3.isPlaying()) {
+                            while (mediaPlayer3.isPlaying()) {
+                                try {
+                                    Message msg = new Message();
+                                    msg.what = mediaPlayer3.getCurrentPosition();
+                                    handler.sendMessage(msg);
+                                    Thread.sleep(1000);
+                                } catch (InterruptedException e) {}
+                            }
+                        }
+
+                        if (mediaPlayer4.isPlaying()) {
+                            while (mediaPlayer4.isPlaying()) {
+                                try {
+                                    Message msg = new Message();
+                                    msg.what = mediaPlayer4.getCurrentPosition();
+                                    handler.sendMessage(msg);
+                                    Thread.sleep(1000);
+                                } catch (InterruptedException e) {}
+                            }
+                        }
+                        if (mediaPlayer5.isPlaying()) {
+                            while (mediaPlayer5.isPlaying()) {
+                                try {
+                                    Message msg = new Message();
+                                    msg.what = mediaPlayer5.getCurrentPosition();
+                                    handler.sendMessage(msg);
+                                    Thread.sleep(1000);
+                                } catch (InterruptedException e) {}
+                            }
+                        }
+                    }
+                }).start();
+
             }
         });
 
@@ -282,22 +739,41 @@ public class MainActivity extends AppCompatActivity  {
             public void onClick(View v) {
                 pausa.setVisibility(v.VISIBLE);
                 play.setVisibility(v.INVISIBLE);
-                if(mediaPlayer1.isPlaying()){
-                    mediaPlayer1.stop();
+                mediaPlayer1.stop();
+                progressBar.setProgress(0);
+                try {
+                    mediaPlayer1.prepare();
+                } catch (IOException e) {
+                    e.printStackTrace();
                 }
-                if(mediaPlayer2.isPlaying()){
-                    mediaPlayer2.stop();
+                mediaPlayer2.stop();
+                try {
+                    mediaPlayer2.prepare();
+                } catch (IOException e) {
+                    e.printStackTrace();
                 }
-                if(mediaPlayer3.isPlaying()){
-                    mediaPlayer3.stop();
+                mediaPlayer3.stop();
+                try {
+                    mediaPlayer3.prepare();
+                } catch (IOException e) {
+                    e.printStackTrace();
                 }
-                if(mediaPlayer4.isPlaying()){
-                    mediaPlayer4.stop();
+                mediaPlayer4.stop();
+                try {
+                    mediaPlayer4.prepare();
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+                mediaPlayer5.stop();
+                try {
+                    mediaPlayer5.prepare();
+                } catch (IOException e) {
+                    e.printStackTrace();
                 }
                 Cancion can;
                 if(posicion==0){
-                    posicion=3;
-                    mediaPlayer4.start();
+                    posicion=4;
+                    mediaPlayer5.start();
                     can=listCanciones.get(listCanciones.size()-1);
                 }else{
                     switch (posicion){
@@ -312,6 +788,9 @@ public class MainActivity extends AppCompatActivity  {
                         case 3:
                             mediaPlayer3.start();
                             break;
+                        case 4:
+                            mediaPlayer4.start();
+                            break;
 
                     }
                     posicion=posicion-1;
@@ -324,18 +803,171 @@ public class MainActivity extends AppCompatActivity  {
                 String fin= String.valueOf(can.getDuracion()).replace(".",":");
                 end.setText(fin);
 
-            }
-        });
+                if(mediaPlayer1.isPlaying()) {
+                    progressBar.setMax(mediaPlayer1.getDuration());
+                }
+                if(mediaPlayer2.isPlaying()) {
+                    progressBar.setMax(mediaPlayer2.getDuration());
+                }
+                if(mediaPlayer3.isPlaying()) {
+                    progressBar.setMax(mediaPlayer3.getDuration());
+                }
+                if(mediaPlayer4.isPlaying()) {
+                    progressBar.setMax(mediaPlayer4.getDuration());
+                }
+                if(mediaPlayer5.isPlaying()) {
+                    progressBar.setMax(mediaPlayer5.getDuration());
+                }
 
-        ImageView lyrics=(ImageView) findViewById(R.id.lyrics);
-        lyrics.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                mostrar(v, ca.getNombre(), "");
+                progressBar.setOnSeekBarChangeListener(
+                        new SeekBar.OnSeekBarChangeListener() {
+                            @Override
+                            public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
+                                if(mediaPlayer1.isPlaying()) {
+                                    if (fromUser) {
+                                        mediaPlayer1.seekTo(progress);
+                                        progressBar.setProgress(progress);
+                                    }
+                                }
+                                if(mediaPlayer2.isPlaying()) {
+                                    if (fromUser) {
+                                        mediaPlayer2.seekTo(progress);
+                                        progressBar.setProgress(progress);
+                                    }
+                                }
+                                if(mediaPlayer3.isPlaying()) {
+                                    if (fromUser) {
+                                        mediaPlayer3.seekTo(progress);
+                                        progressBar.setProgress(progress);
+                                    }
+                                }
+                                if(mediaPlayer4.isPlaying()) {
+                                    if (fromUser) {
+                                        mediaPlayer4.seekTo(progress);
+                                        progressBar.setProgress(progress);
+                                    }
+                                }
+                                if(mediaPlayer5.isPlaying()) {
+                                    if (fromUser) {
+                                        mediaPlayer5.seekTo(progress);
+                                        progressBar.setProgress(progress);
+                                    }
+                                }
+                            }
+
+                            @Override
+                            public void onStartTrackingTouch(SeekBar seekBar) {
+
+                            }
+
+                            @Override
+                            public void onStopTrackingTouch(SeekBar seekBar) {
+
+                            }
+                        }
+                );
+
+                new Thread(new Runnable() {
+                    @Override
+                    public void run() {
+                        if (mediaPlayer1.isPlaying()) {
+                            while (mediaPlayer1.isPlaying()) {
+                                try {
+                                    Message msg = new Message();
+                                    msg.what = mediaPlayer1.getCurrentPosition();
+                                    handler.sendMessage(msg);
+                                    Thread.sleep(1000);
+                                } catch (InterruptedException e) {}
+                            }
+                        }
+
+                        if (mediaPlayer2.isPlaying()) {
+                            while (mediaPlayer2.isPlaying()) {
+                                try {
+                                    Message msg = new Message();
+                                    msg.what = mediaPlayer2.getCurrentPosition();
+                                    handler.sendMessage(msg);
+                                    Thread.sleep(1000);
+                                } catch (InterruptedException e) {}
+                            }
+                        }
+
+                        if (mediaPlayer3.isPlaying()) {
+                            while (mediaPlayer3.isPlaying()) {
+                                try {
+                                    Message msg = new Message();
+                                    msg.what = mediaPlayer3.getCurrentPosition();
+                                    handler.sendMessage(msg);
+                                    Thread.sleep(1000);
+                                } catch (InterruptedException e) {}
+                            }
+                        }
+
+                        if (mediaPlayer4.isPlaying()) {
+                            while (mediaPlayer4.isPlaying()) {
+                                try {
+                                    Message msg = new Message();
+                                    msg.what = mediaPlayer4.getCurrentPosition();
+                                    handler.sendMessage(msg);
+                                    Thread.sleep(1000);
+                                } catch (InterruptedException e) {}
+                            }
+                        }
+                        if (mediaPlayer5.isPlaying()) {
+                            while (mediaPlayer5.isPlaying()) {
+                                try {
+                                    Message msg = new Message();
+                                    msg.what = mediaPlayer5.getCurrentPosition();
+                                    handler.sendMessage(msg);
+                                    Thread.sleep(1000);
+                                } catch (InterruptedException e) {}
+                            }
+                        }
+                    }
+                }).start();
+
             }
         });
 
     }
+    @Override
+    protected void onStop() {
+        stopVoiceRecorder();
+
+        // Stop Cloud Speech API
+        speechAPI.removeListener(mSpeechServiceListener);
+        speechAPI.destroy();
+        speechAPI = null;
+
+        super.onStop();
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+    }
+
+    @Override
+    protected void onStart() {
+        super.onStart();
+        if (isGrantedPermission(Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED) {
+            startVoiceRecorder();
+        } else {
+            makeRequest(Manifest.permission.RECORD_AUDIO);
+        }
+
+        speechAPI.addListener(mSpeechServiceListener);
+    }
+
+    private int isGrantedPermission(String permission) {
+        return ContextCompat.checkSelfPermission(this, permission);
+    }
+
+    private void makeRequest(String permission) {
+        ActivityCompat.requestPermissions(this, new String[]{permission}, RECORD_REQUEST_CODE);
+    }
+
+
     public Bitmap redimensionarImagenMaximo(Bitmap mBitmap, float newWidth, float newHeigth) {
         //Redimensionamos
         int width = mBitmap.getWidth();
@@ -349,12 +981,7 @@ public class MainActivity extends AppCompatActivity  {
         // recreate the new Bitmap
         return Bitmap.createBitmap(mBitmap, 0, 0, width, height, matrix, false);
     }
-    private int isGrantedPermission(String permission) {
-        return ContextCompat.checkSelfPermission(this, permission);
-    }
-    private void makeRequest(String permission) {
-        ActivityCompat.requestPermissions(this, new String[]{permission}, RECORD_REQUEST_CODE);
-    }
+
 
     private void startVoiceRecorder() {
         if (mVoiceRecorder != null) {
@@ -382,62 +1009,14 @@ public class MainActivity extends AppCompatActivity  {
         }
     }
 
-    public void mostrar(View view, String text, String msn)
-    {
-        // con este tema personalizado evitamos los bordes por defecto
-        customDialog = new Dialog(this,R.style.Theme_Dialog_Translucent);
-        //deshabilitamos el título por defecto
-        customDialog.requestWindowFeature(Window.FEATURE_NO_TITLE);
-        //obligamos al usuario a pulsar los botones para cerrarlo
-        customDialog.setCancelable(false);
-        //establecemos el contenido de nuestro dialog
-        customDialog.setContentView(R.layout.lyrics);
 
-
-        TextView titulo = (TextView) customDialog.findViewById(R.id.titulo);
-        titulo.setText(text);
-
-
-        //contenido.setText(msn);
-
-
-
-
-        try {
-            speechAPI = new SpeechAPI(MainActivity.this);
-        stringList = new ArrayList<>();
-        adapter =  new ArrayAdapter(this, android.R.layout.simple_list_item_1, stringList);
-       listView.setAdapter(adapter);
-
-
-        if (isGrantedPermission(Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED) {
-            startVoiceRecorder();
-        } else {
-            makeRequest(Manifest.permission.RECORD_AUDIO);
-        }
-        speechAPI.addListener(mSpeechServiceListener);
-        }catch (Exception e){
-            System.out.println("errooor:"+e.getMessage());
-
-        }
-
-
-        ((Button) customDialog.findViewById(R.id.button9)).setOnClickListener(new View.OnClickListener() {
-
-            @Override
-            public void onClick(View view)
-            {
-                customDialog.dismiss();
-                speechAPI.removeListener(mSpeechServiceListener);
-                speechAPI.destroy();
-                speechAPI = null;
-
-            }
-        });
-
-
-
-
-        customDialog.show();
+    @Override
+    public void onBackPressed () {
+        mediaPlayer1.stop();
+        mediaPlayer2.stop();
+        mediaPlayer3.stop();
+        mediaPlayer4.stop();
+        Intent intent = new Intent(getBaseContext(), lista.class);
+        startActivity(intent);
     }
 }

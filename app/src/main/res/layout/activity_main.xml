@@ -10,15 +10,15 @@
     <ImageView
         android:id="@+id/album_cover"
         android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
+        android:layout_height="170dp"
         android:layout_alignParentTop="true"
         android:layout_centerHorizontal="true"
         android:layout_centerVertical="true"
-        android:layout_marginTop="161dp"
+        android:layout_marginTop="80dp"
         android:layout_marginBottom="10dp"
         android:paddingBottom="50dp"
         app:srcCompat="@drawable/music" />
-    <ProgressBar
+    <SeekBar
         android:id="@+id/song_progress"
         style="?android:attr/progressBarStyleHorizontal"
         android:layout_width="match_parent"
@@ -35,6 +35,8 @@
         android:layout_height="wrap_content"
         android:layout_below="@+id/song_progress"
         android:layout_alignStart="@id/song_progress"
+        android:layout_marginStart="-23dp"
+        android:layout_marginTop="11dp"
         android:text="1:23"
         android:textColor="@color/colorAccent" />
 
@@ -44,6 +46,8 @@
         android:layout_height="wrap_content"
         android:layout_below="@+id/song_progress"
         android:layout_alignEnd="@id/song_progress"
+        android:layout_marginTop="11dp"
+        android:layout_marginEnd="-27dp"
         android:text="2:45"
         android:textColor="@color/colorAccent" />
     <ImageButton
@@ -54,7 +58,7 @@
         android:layout_alignBottom="@+id/song_progress"
         android:layout_alignParentBottom="true"
         android:layout_centerHorizontal="true"
-        android:layout_marginTop="40dp"
+        android:layout_marginTop="150dp"
         android:layout_marginBottom="2dp"
         android:background="@null"
         app:srcCompat="@drawable/pausa" />
@@ -67,7 +71,7 @@
         android:layout_alignBottom="@+id/song_progress"
         android:layout_alignParentBottom="true"
         android:layout_centerHorizontal="true"
-        android:layout_marginTop="40dp"
+        android:layout_marginTop="150dp"
         android:layout_marginBottom="2dp"
         android:background="@null"
         app:srcCompat="@drawable/jugar" />
@@ -75,7 +79,7 @@
 
     <ImageButton
         android:id="@+id/next_button"
-        android:layout_marginTop="40dp"
+        android:layout_marginTop="150dp"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_alignBottom="@+id/play_button"
@@ -85,7 +89,7 @@
         app:srcCompat="@drawable/proximo" />
 
     <ImageButton
-        android:layout_marginTop="40dp"
+        android:layout_marginTop="150dp"
         android:id="@+id/previous_button"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
@@ -105,21 +109,11 @@
         android:layout_marginBottom="30dp"
         app:srcCompat="@drawable/listac" />
 
-    <ImageView
-        android:id="@+id/lyrics"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_alignParentLeft="true"
-        android:layout_marginTop="25dp"
-        android:layout_marginLeft="8dp"
-        android:layout_marginBottom="30dp"
-        app:srcCompat="@drawable/subtitulos" />
-
     <TextView
         android:id="@+id/nombre"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_alignTop="@+id/play_button"
+        android:layout_alignBottom="@+id/start"
         android:layout_centerHorizontal="true"
         android:text="Cancion"
         android:textAlignment="center"
@@ -137,5 +131,39 @@
         android:textAlignment="center"
         android:textColor="@color/colorAccent" />
 
+    <ScrollView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignStart="@+id/start"
+        android:layout_alignEnd="@+id/end"
+        android:layout_marginTop="15dp"
+        android:layout_below="@+id/artista">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical" >
+
+            <TextView
+                android:id="@+id/letra"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_below="@+id/artista"
+                android:layout_alignStart="@+id/start"
+                android:layout_alignEnd="@+id/end"
+                android:layout_marginTop="15dp"
+                android:background="@color/transparent"
+                android:text="Letra de la canción..."
+                android:textColor="@color/colorAccent"
+                />
+
+            <ListView
+                android:id="@+id/listview"
+                android:layout_width="wrap_content"
+                android:layout_height="100dp"
+                android:background="@color/azulclaro"
+                android:cacheColorHint="@color/colorAccent" />
+        </LinearLayout>
+    </ScrollView>
 
 </RelativeLayout>

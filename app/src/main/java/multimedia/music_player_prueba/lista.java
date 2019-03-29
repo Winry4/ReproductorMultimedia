@@ -47,7 +47,7 @@ public class lista extends AppCompatActivity implements Serializable {
                             R.drawable.rozalen);
                 }else{
                     icon = BitmapFactory.decodeResource(getResources(),
-                            R.drawable.izal);
+                            R.drawable.amaia);
                 }
                 cancion.setFoto(icon);
                 listacaciones.add(cancion);
@@ -74,6 +74,14 @@ public class lista extends AppCompatActivity implements Serializable {
         });
 
 
+    }
+
+
+    @Override
+    public void onBackPressed(){
+        moveTaskToBack(true);
+        android.os.Process.killProcess(android.os.Process.myPid());
+        System.exit(1);
     }
 
 }
